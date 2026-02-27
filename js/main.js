@@ -705,43 +705,73 @@ document.addEventListener('DOMContentLoaded', () => {
       // Configurar galería de imágenes dinámica según la convención [Título]_X.png en carpeta portadas
       const mainImg = document.querySelector('.product-gallery-main .placeholder-img');
       if (mainImg) {
-        mainImg.style.backgroundImage = `url("${encodeURI(`assets/portadas/${game.title}_1.png`)}")`;
-        mainImg.innerHTML = ''; // Eliminar SVG estático
+        // Intentar cargar la imagen principal desde carpeta 1 o 2
+        const tryMainPaths = [
+          `assets/portadas/1/${game.title}_1.png`,
+          `assets/portadas/2/${game.title}_1.png`
+        ];
+
+        const loadMain = (idx) => {
+          if (idx >= tryMainPaths.length) return;
+          const img = new Image();
+          img.onload = () => {
+            mainImg.style.backgroundImage = `url("${encodeURI(tryMainPaths[idx])}")`;
+            mainImg.innerHTML = '';
+          };
+          img.onerror = () => loadMain(idx + 1);
+          img.src = encodeURI(tryMainPaths[idx]);
+        };
+        loadMain(0);
       }
 
       const thumbsContainer = document.querySelector('.product-gallery-thumbs');
       if (thumbsContainer) {
         thumbsContainer.innerHTML = ''; // Limpiar miniaturas
         let imgIndex = 1;
+
         const loadNextImage = () => {
-          const imgPath = `assets/portadas/${game.title}_${imgIndex}.png`;
-          const testImg = new Image();
-          testImg.onload = () => {
-            const thumbBtn = document.createElement('button');
-            thumbBtn.className = `thumb ${imgIndex === 1 ? 'active' : ''}`;
-            thumbBtn.setAttribute('aria-label', `Ver imagen ${imgIndex}`);
+          const folders = ['1', '2'];
+          let folderIdx = 0;
 
-            const thumbDiv = document.createElement('div');
-            thumbDiv.className = 'placeholder-img';
-            thumbDiv.style.width = '100%';
-            thumbDiv.style.height = '100%';
-            thumbDiv.style.backgroundImage = `url("${encodeURI(imgPath)}")`;
+          const attempt = () => {
+            if (folderIdx >= folders.length) return;
+            const imgPath = `assets/portadas/${folders[folderIdx]}/${game.title}_${imgIndex}.png`;
+            const testImg = new Image();
 
-            thumbBtn.appendChild(thumbDiv);
-            thumbsContainer.appendChild(thumbBtn);
+            testImg.onload = () => {
+              const thumbBtn = document.createElement('button');
+              thumbBtn.className = `thumb ${imgIndex === 1 ? 'active' : ''}`;
+              thumbBtn.setAttribute('aria-label', `Ver imagen ${imgIndex}`);
 
-            thumbBtn.addEventListener('click', () => {
-              thumbsContainer.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
-              thumbBtn.classList.add('active');
-              if (mainImg) {
-                mainImg.style.backgroundImage = `url("${encodeURI(imgPath)}")`;
-              }
-            });
+              const thumbDiv = document.createElement('div');
+              thumbDiv.className = 'placeholder-img';
+              thumbDiv.style.width = '100%';
+              thumbDiv.style.height = '100%';
+              thumbDiv.style.backgroundImage = `url("${encodeURI(imgPath)}")`;
 
-            imgIndex++;
-            loadNextImage();
+              thumbBtn.appendChild(thumbDiv);
+              thumbsContainer.appendChild(thumbBtn);
+
+              thumbBtn.addEventListener('click', () => {
+                thumbsContainer.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+                thumbBtn.classList.add('active');
+                if (mainImg) {
+                  mainImg.style.backgroundImage = `url("${encodeURI(imgPath)}")`;
+                }
+              });
+
+              imgIndex++;
+              loadNextImage();
+            };
+
+            testImg.onerror = () => {
+              folderIdx++;
+              attempt();
+            };
+
+            testImg.src = encodeURI(imgPath);
           };
-          testImg.src = imgPath;
+          attempt();
         };
         loadNextImage();
       }
@@ -768,7 +798,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: game.title,
             price: game.price.replace(' €', '').replace(',', '.'),
             class: game.imgClass,
-            img: `assets/portadas/${game.title}_1.png`
+            img: placeholder ? getComputedStyle(placeholder).backgroundImage.slice(5, -2).replace(/"/g, '') : `assets/portadas/1/${game.title}_1.png`
           };
           favorites.toggle(product);
         });
